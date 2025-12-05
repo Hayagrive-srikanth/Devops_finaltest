@@ -4,24 +4,23 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-      - REGION=$(aws configure get region)
-      - ECR_URL="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
-      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_URL
-      - echo Starting build at `date`
+      - REGION=$AWS_DEFAULT_REGION
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REPO_NAME=wildrydes
+      - ECR_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME
+      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_URI
 
   build:
     commands:
       - echo Building Docker image...
-      - docker build -t wildrydes-app .
-      - docker tag wildrydes-app:latest $ECR_URL/wildrydes-app-repo:latest
+      - docker build -t $REPO_NAME .
+      - docker tag $REPO_NAME:latest $ECR_URI:latest
 
   post_build:
     commands:
       - echo Pushing Docker image...
-      - docker push $ECR_URL/wildrydes-app-repo:latest
-      - echo Writing imagedefinitions.json file...
-      - printf '[{"name":"app","imageUri":"%s/wildrydes-app-repo:latest"}]' $ECR_URL > imagedefinitions.json
+      - docker push $ECR_URI:latest
+      - printf '[{"name":"wildrydes","imageUri":"%s"}]' $ECR_URI:latest > imagedefinitions.json
 
 artifacts:
   files:
